@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gadget Galore | Modern Tech Store</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="brand-bar py-3 shadow-sm">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <h2 class="m-0 fw-bold brand-title">Gadget Galore</h2>
+        <span class="badge ecommerce-pill">Ecommerce Store</span>
+        <nav class="top-module-nav d-flex align-items-center gap-2">
+          <a href="#shopSection" class="nav-chip">Shop</a>
+          <a href="#aboutUs" class="nav-chip">About Us</a>
+          <a href="#contactUs" class="nav-chip">Contact Us</a>
+        </nav>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span id="authStatus" class="badge text-bg-light text-dark">Guest</span>
+        <button id="openAuthBtn" class="btn btn-sm btn-outline-light">Sign In / Sign Up</button>
+        <button id="logoutBtn" class="btn btn-sm btn-outline-warning d-none">Logout</button>
+        <span class="badge cart-pill">Cart: <span id="cartCount">0</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container my-4 my-md-5">
+    <div id="authFeatureBanner" class="alert d-none mb-4" role="status">
+      <span id="authFeatureText"></span>
+    </div>
+
+    <section class="hero p-4 p-md-5 mb-4">
+      <h1 class="fw-bold">Future-Ready Tech, Delivered Today</h1>
+      <p class="mb-0">
+        Shop handpicked modern gadgets in AI, smart home, wearable tech, productivity, and gaming.
+      </p>
+    </section>
+
+    <section id="shopSection" class="control-box p-3 p-md-4 mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-7">
+          <label for="searchInput" class="form-label fw-semibold">Search Products</label>
+          <input id="searchInput" type="text" class="form-control" placeholder="Search by product name..." />
+        </div>
+        <div class="col-12 col-md-5">
+          <label for="categoryFilter" class="form-label fw-semibold">Category</label>
+          <select id="categoryFilter" class="form-select">
+            <option value="All">All Categories</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminPanel" class="control-box p-3 p-md-4 mb-4 d-none">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="m-0">Admin App Management</h4>
+        <span class="badge text-bg-success">Admin Only</span>
+      </div>
+
+      <div
+        id="adminUndoBanner"
+        class="alert alert-warning d-none py-2 px-3 mb-3 d-flex justify-content-between align-items-center"
+        role="status"
+      >
+        <span id="adminUndoText" class="small mb-0"></span>
+        <button id="adminUndoBtn" class="btn btn-sm btn-outline-dark" type="button">Undo</button>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <input
+            id="adminSearchInput"
+            class="form-control"
+            placeholder="Search apps by name/category..."
+          />
+        </div>
+        <div class="col-md-4">
+          <select id="adminSortSelect" class="form-select">
+            <option value="newest" selected>Sort: Newest</option>
+            <option value="oldest">Sort: Oldest</option>
+            <option value="priceAsc">Sort: Price Low to High</option>
+            <option value="priceDesc">Sort: Price High to Low</option>
+            <option value="nameAsc">Sort: Name A-Z</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-center">
+          <small class="text-muted"><span id="adminCrudCount">0</span> app(s)</small>
+        </div>
+      </div>
+
+      <form id="adminAppForm" class="row g-2 mb-3">
+        <input id="adminAppId" type="hidden" />
+        <div class="col-md-6">
+          <input id="adminAppName" class="form-control" placeholder="App name" required />
+        </div>
+        <div class="col-md-3">
+          <input id="adminAppCategory" class="form-control" placeholder="Category" required />
+        </div>
+        <div class="col-md-3">
+          <input id="adminAppPrice" type="number" min="0" class="form-control" placeholder="Price" required />
+        </div>
+        <div class="col-md-6">
+          <input id="adminAppSpecs" class="form-control" placeholder="Specs" required />
+        </div>
+        <div class="col-md-6">
+          <input id="adminAppImage" type="file" class="form-control" accept="image/*" />
+          <input id="adminAppImageExisting" type="hidden" />
+          <small class="text-muted">Upload a product image (saved in backend storage).</small>
+        </div>
+        <div class="col-12">
+          <textarea id="adminAppDesc" class="form-control" rows="2" placeholder="Description" required></textarea>
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button id="adminSaveBtn" class="btn btn-gg-primary" type="submit">Save App</button>
+          <button id="adminCancelEditBtn" class="btn btn-outline-secondary d-none" type="button">Cancel Edit</button>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 36px;">
+                <input id="adminSelectAll" class="form-check-input" type="checkbox" />
+              </th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Updated</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminAppsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="d-flex align-items-center gap-2">
+          <button id="adminBulkDeleteBtn" class="btn btn-sm btn-outline-danger" type="button" disabled>
+            Delete Selected
+          </button>
+          <small class="text-muted"><span id="adminSelectedCount">0</span> selected</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <select id="adminPageSizeSelect" class="form-select form-select-sm">
+            <option value="5">5 / page</option>
+            <option value="10" selected>10 / page</option>
+            <option value="20">20 / page</option>
+          </select>
+          <button id="adminPrevPageBtn" class="btn btn-sm btn-outline-secondary" type="button">Prev</button>
+          <small id="adminPageInfo" class="text-muted">Page 1 of 1</small>
+          <button id="adminNextPageBtn" class="btn btn-sm btn-outline-secondary" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="m-0">Products</h4>
+        <small class="text-muted"><span id="resultCount">0</span> item(s) found</small>
+      </div>
+      <div id="productGrid" class="row g-3"></div>
+    </section>
+
+    <section id="aboutUs" class="info-section mt-5 p-4">
+      <h4>About Us</h4>
+      <p class="mb-0">
+        Gadget Galore is a premier e-commerce destination dedicated to delivering the latest innovations in modern technology. We specialize in providing high-quality, cutting-edge gadgets designed to enhance everyday life, productivity, and connectivity in today’s fast-paced digital world.
+
+        Driven by a passion for innovation, Gadget Galore carefully curates products that reflect current technological trends while meeting the highest standards of performance, reliability, and value. From smart devices and accessories to emerging tech solutions, we ensure that every item we offer combines functionality with modern design.
+
+        Our commitment goes beyond selling products—we aim to create a seamless and trustworthy shopping experience. Through reliable service, competitive pricing, and customer-focused support, Gadget Galore strives to be your go-to source for technology that keeps you ahead of the curve.
+At Gadget Galore, we don’t just sell gadgets—we bring tomorrow’s technology to you, today.
+      </p>
+    </section>
+
+    <section id="contactUs" class="info-section mt-4 p-4">
+      <h4>Contact Us</h4>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <p class="mb-1"><strong>Email:</strong> support@gadgetgalore.ph</p>
+          <p class="mb-1"><strong>Phone:</strong> +63 917 555 1200</p>
+          <p class="mb-2"><strong>Address:</strong> Near Plaza Luz, Beside HCA, Pagadian City</p>
+          <p class="mb-0">
+            <a
+              href="https://www.google.com/maps?q=Near+Plaza+Luz+Beside+HCA+Pagadian+City"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open in Google Maps
+            </a>
+          </p>
+        </div>
+        <div class="col-md-6">
+          <form id="contactForm" class="row g-2">
+            <div class="col-12">
+              <input id="contactName" type="text" class="form-control" placeholder="Your Name" required />
+            </div>
+            <div class="col-12">
+              <input id="contactEmail" type="email" class="form-control" placeholder="Your Email" required />
+            </div>
+            <div class="col-12">
+              <textarea id="contactMessage" class="form-control" rows="3" placeholder="Message" required></textarea>
+            </div>
+            <div class="col-12">
+              <button class="btn btn-gg-primary" type="submit">Send Message</button>
+            </div>
+          </form>
+        </div>
+        <div class="col-12">
+          <div class="map-wrap mt-2">
+            <iframe
+              title="Gadget Galore Shop Location"
+              src="https://www.google.com/maps?q=Near+Plaza+Luz+Beside+HCA+Pagadian+City&output=embed"
+              width="100%"
+              height="280"
+              style="border:0;"
+              allowfullscreen=""
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="authModalTitle" class="modal-title">Sign In</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="authForm">
+            <div class="mb-3">
+              <label for="authName" class="form-label">Name</label>
+              <input id="authName" type="text" class="form-control" placeholder="Your name (for sign up)" />
+            </div>
+            <div class="mb-3">
+              <label for="authEmail" class="form-label">Email</label>
+              <input id="authEmail" type="email" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label for="authPassword" class="form-label">Password</label>
+              <input id="authPassword" type="password" class="form-control" minlength="6" required />
+            </div>
+            <button id="authSubmitBtn" class="btn btn-gg-primary w-100" type="submit">Sign In</button>
+          </form>
+          <p class="text-center mt-3 mb-0 small">
+            <span id="authSwitchLabel">No account yet?</span>
+            <button id="authSwitchBtn" type="button" class="btn btn-link p-0">Sign Up</button>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="detailTitle" class="modal-title">Product Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <img id="detailImage" class="img-fluid rounded mb-3" alt="Product image" />
+          <p id="detailDescription" class="mb-2"></p>
+          <p id="detailSpecs" class="mb-1"></p>
+          <h6 id="detailPrice" class="price-tag mt-3"></h6>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
