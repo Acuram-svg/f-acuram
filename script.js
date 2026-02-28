@@ -3,6 +3,7 @@ const searchInput = document.getElementById("searchInput");
 const categoryFilter = document.getElementById("categoryFilter");
 const resultCount = document.getElementById("resultCount");
 const cartCount = document.getElementById("cartCount");
+const openCartBtn = document.getElementById("openCartBtn");
 const authStatus = document.getElementById("authStatus");
 const openAuthBtn = document.getElementById("openAuthBtn");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -47,17 +48,29 @@ const adminPageSizeSelect = document.getElementById("adminPageSizeSelect");
 const adminPrevPageBtn = document.getElementById("adminPrevPageBtn");
 const adminNextPageBtn = document.getElementById("adminNextPageBtn");
 const adminPageInfo = document.getElementById("adminPageInfo");
+const adminOrdersTableBody = document.getElementById("adminOrdersTableBody");
+const adminRefreshOrdersBtn = document.getElementById("adminRefreshOrdersBtn");
 const authFeatureBanner = document.getElementById("authFeatureBanner");
 const authFeatureText = document.getElementById("authFeatureText");
+const cartItemsList = document.getElementById("cartItemsList");
+const cartTotal = document.getElementById("cartTotal");
+const checkoutForm = document.getElementById("checkoutForm");
+const checkoutName = document.getElementById("checkoutName");
+const checkoutEmail = document.getElementById("checkoutEmail");
+const checkoutPhone = document.getElementById("checkoutPhone");
+const checkoutLocation = document.getElementById("checkoutLocation");
+const placeOrderBtn = document.getElementById("placeOrderBtn");
 
 const authModal = new bootstrap.Modal(document.getElementById("authModal"));
 const detailModal = new bootstrap.Modal(document.getElementById("productDetailModal"));
+const cartModal = new bootstrap.Modal(document.getElementById("cartModal"));
 
-let cartItems = 0;
+let cartItems = [];
 let authMode = "signin";
 let currentUser = null;
 let authToken = null;
 let products = [];
+let orders = [];
 const LOCAL_API_BASE_URL = "http://localhost:5000/api";
 const RENDER_API_BASE_URL = "https://b-acuram.onrender.com/api";
 const API_BASE_URL = (() => {
@@ -199,12 +212,17 @@ function updateAuthUI() {
     authStatus.textContent = `Signed in: ${currentUser.name} (${currentUser.role})`;
     openAuthBtn.textContent = "Switch Account";
     logoutBtn.classList.remove("d-none");
+    checkoutName.value = currentUser.name || "";
+    checkoutEmail.value = currentUser.email || "";
   } else {
     authStatus.textContent = "Guest";
     openAuthBtn.textContent = "Sign In / Sign Up";
     logoutBtn.classList.add("d-none");
+    checkoutName.value = "";
+    checkoutEmail.value = "";
   }
   updateAdminUI();
+  loadOrders();
 }
 
 function showFeatureBanner(message, type = "info") {
@@ -272,6 +290,73 @@ function toImageUrl(imagePath) {
     return `${API_BASE_URL.replace("/api", "")}${imagePath}`;
   }
   return `${API_BASE_URL.replace("/api", "")}/${imagePath}`;
+}
+
+function updateCartCount() {
+  const totalQty = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  cartCount.textContent = totalQty;
+}
+
+function getCartTotalAmount() {
+  return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+}
+
+function renderCartModal() {
+  if (!cartItems.length) {
+    cartItemsList.innerHTML = `
+      <div class="alert alert-warning mb-0">
+        Your cart is empty. Add modern tech products first.
+      </div>
+    `;
+    cartTotal.textContent = formatPeso(0);
+    placeOrderBtn.disabled = true;
+    return;
+  }
+
+  placeOrderBtn.disabled = false;
+  cartItemsList.innerHTML = "";
+
+  cartItems.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "d-flex justify-content-between align-items-center border rounded p-2 mb-2";
+    row.innerHTML = `
+      <div class="pe-2">
+        <div class="fw-semibold">${item.name}</div>
+        <small class="text-muted">${formatPeso(item.price)} each</small>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary cart-minus-btn">-</button>
+        <span class="fw-semibold">${item.quantity}</span>
+        <button class="btn btn-sm btn-outline-secondary cart-plus-btn">+</button>
+        <button class="btn btn-sm btn-outline-danger cart-remove-btn">Remove</button>
+      </div>
+    `;
+
+    row.querySelector(".cart-minus-btn").addEventListener("click", () => {
+      item.quantity -= 1;
+      if (item.quantity <= 0) {
+        cartItems = cartItems.filter((cartItem) => cartItem.productId !== item.productId);
+      }
+      updateCartCount();
+      renderCartModal();
+    });
+
+    row.querySelector(".cart-plus-btn").addEventListener("click", () => {
+      item.quantity += 1;
+      updateCartCount();
+      renderCartModal();
+    });
+
+    row.querySelector(".cart-remove-btn").addEventListener("click", () => {
+      cartItems = cartItems.filter((cartItem) => cartItem.productId !== item.productId);
+      updateCartCount();
+      renderCartModal();
+    });
+
+    cartItemsList.appendChild(row);
+  });
+
+  cartTotal.textContent = formatPeso(getCartTotalAmount());
 }
 
 function persistSession() {
@@ -361,11 +446,37 @@ async function deleteApp(appId) {
   });
 }
 
+async function createOrder(payload) {
+  return apiRequest("/orders", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+async function fetchOrders() {
+  return apiRequest("/orders", {
+    headers: {
+      ...getAuthHeaders()
+    }
+  });
+}
+
+async function updateOrderStatus(orderId, status) {
+  return apiRequest(`/orders/${orderId}/status`, {
+    method: "PUT",
+    headers: {
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({ status })
+  });
+}
+
 function updateAdminUI() {
   const isAdmin = currentUser && currentUser.role === "admin";
   adminPanel.classList.toggle("d-none", !isAdmin);
   if (isAdmin) {
     renderAdminApps();
+    renderAdminOrders();
   }
 }
 
@@ -474,6 +585,78 @@ function renderAdminApps() {
   });
 }
 
+function renderAdminOrders() {
+  if (!adminOrdersTableBody) return;
+
+  if (!orders.length) {
+    adminOrdersTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center text-muted">No orders yet.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  adminOrdersTableBody.innerHTML = "";
+  orders.forEach((order) => {
+    const itemsSummary = order.items
+      .map((item) => `${item.name} x${item.quantity}`)
+      .slice(0, 2)
+      .join(", ");
+    const moreItems = order.items.length > 2 ? ` +${order.items.length - 2} more` : "";
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>#${String(order._id).slice(-6)}</td>
+      <td>
+        <div class="fw-semibold">${order.customerName}</div>
+        <small class="text-muted">${order.customerEmail}</small>
+      </td>
+      <td>${order.customerPhone}</td>
+      <td>${order.customerLocation}</td>
+      <td>${formatPeso(order.totalAmount || 0)}</td>
+      <td><small>${itemsSummary}${moreItems}</small></td>
+      <td>
+        <select class="form-select form-select-sm order-status-select">
+          <option value="pending" ${order.status === "pending" ? "selected" : ""}>Pending</option>
+          <option value="processing" ${order.status === "processing" ? "selected" : ""}>Processing</option>
+          <option value="completed" ${order.status === "completed" ? "selected" : ""}>Completed</option>
+          <option value="cancelled" ${order.status === "cancelled" ? "selected" : ""}>Cancelled</option>
+        </select>
+      </td>
+    `;
+
+    row.querySelector(".order-status-select").addEventListener("change", async (event) => {
+      const newStatus = event.target.value;
+      try {
+        await updateOrderStatus(order._id, newStatus);
+        order.status = newStatus;
+        showFeatureBanner(`Order #${String(order._id).slice(-6)} set to ${newStatus}.`, "success");
+      } catch (error) {
+        showFeatureBanner(error.message || "Failed to update order status.", "danger");
+      }
+    });
+
+    adminOrdersTableBody.appendChild(row);
+  });
+}
+
+async function loadOrders() {
+  if (!currentUser || currentUser.role !== "admin") {
+    orders = [];
+    renderAdminOrders();
+    return;
+  }
+
+  try {
+    orders = await fetchOrders();
+  } catch (error) {
+    orders = [];
+    showFeatureBanner(error.message || "Unable to load orders.", "danger");
+  }
+  renderAdminOrders();
+}
+
 function resetAdminForm() {
   adminAppForm.reset();
   adminAppId.value = "";
@@ -498,14 +681,28 @@ async function loadProducts() {
   renderAdminApps();
 }
 
-function addToCart() {
+function addToCart(product) {
   if (!currentUser) {
     alert("Please sign in first before adding items to your cart.");
     showAuthModal("signin");
     return;
   }
-  cartItems += 1;
-  cartCount.textContent = cartItems;
+
+  const existingItem = cartItems.find((item) => item.productId === product._id);
+  if (existingItem) {
+    existingItem.quantity += 1;
+  } else {
+    cartItems.push({
+      productId: product._id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1
+    });
+  }
+
+  updateCartCount();
+  showFeatureBanner(`${product.name} added to cart.`, "success");
 }
 
 function openProductDetails(product) {
@@ -564,7 +761,7 @@ function renderProducts() {
       </article>
     `;
 
-    col.querySelector(".add-btn").addEventListener("click", addToCart);
+    col.querySelector(".add-btn").addEventListener("click", () => addToCart(product));
     col.querySelector(".details-btn").addEventListener("click", () => openProductDetails(product));
     productGrid.appendChild(col);
   });
@@ -572,8 +769,14 @@ function renderProducts() {
 
 openAuthBtn.addEventListener("click", () => showAuthModal("signin"));
 authSwitchBtn.addEventListener("click", () => showAuthModal(authMode === "signin" ? "signup" : "signin"));
+openCartBtn.addEventListener("click", () => {
+  renderCartModal();
+  cartModal.show();
+});
 logoutBtn.addEventListener("click", () => {
   clearSession();
+  cartItems = [];
+  updateCartCount();
   updateAuthUI();
   showFeatureBanner("You are now logged out.", "info");
 });
@@ -726,6 +929,54 @@ adminUndoBtn.addEventListener("click", () => {
   showFeatureBanner("Delete undone. Apps restored.", "success");
 });
 
+checkoutForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!cartItems.length) {
+    showFeatureBanner("Your cart is empty.", "danger");
+    return;
+  }
+
+  const payload = {
+    customerName: checkoutName.value.trim(),
+    customerEmail: checkoutEmail.value.trim(),
+    customerPhone: checkoutPhone.value.trim(),
+    customerLocation: checkoutLocation.value.trim(),
+    items: cartItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity
+    }))
+  };
+
+  if (!payload.customerName || !payload.customerEmail || !payload.customerPhone || !payload.customerLocation) {
+    showFeatureBanner("Please complete Name, Email, Phone, and Location.", "danger");
+    return;
+  }
+
+  const originalText = placeOrderBtn.textContent;
+  placeOrderBtn.disabled = true;
+  placeOrderBtn.textContent = "Placing order...";
+  try {
+    const order = await createOrder(payload);
+    cartItems = [];
+    updateCartCount();
+    renderCartModal();
+    checkoutPhone.value = "";
+    checkoutLocation.value = "";
+    cartModal.hide();
+    showFeatureBanner(`Order placed! Reference #${String(order._id).slice(-6)}.`, "success");
+  } catch (error) {
+    showFeatureBanner(error.message || "Failed to place order.", "danger");
+  } finally {
+    placeOrderBtn.disabled = false;
+    placeOrderBtn.textContent = originalText;
+  }
+});
+
+adminRefreshOrdersBtn.addEventListener("click", async () => {
+  await loadOrders();
+  showFeatureBanner("Orders refreshed.", "info");
+});
+
 contactForm.addEventListener("submit", (e) => {
   e.preventDefault();
   alert("Thank you for contacting Gadget Galore. We will reply soon.");
@@ -735,6 +986,7 @@ contactForm.addEventListener("submit", (e) => {
 async function initializeApp() {
   await loadProducts();
   await restoreSession();
+  updateCartCount();
   updateAuthUI();
 }
 

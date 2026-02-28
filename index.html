@@ -26,7 +26,7 @@
         <span id="authStatus" class="badge text-bg-light text-dark">Guest</span>
         <button id="openAuthBtn" class="btn btn-sm btn-outline-light">Sign In / Sign Up</button>
         <button id="logoutBtn" class="btn btn-sm btn-outline-warning d-none">Logout</button>
-        <span class="badge cart-pill">Cart: <span id="cartCount">0</span></span>
+        <button id="openCartBtn" class="btn btn-sm cart-pill">Cart: <span id="cartCount">0</span></button>
       </div>
     </div>
   </header>
@@ -159,6 +159,30 @@
           <button id="adminNextPageBtn" class="btn btn-sm btn-outline-secondary" type="button">Next</button>
         </div>
       </div>
+
+      <hr class="my-4" />
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="m-0">Customer Orders</h5>  
+        <button id="adminRefreshOrdersBtn" class="btn btn-sm btn-outline-secondary" type="button">
+          Refresh Orders
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Location</th>
+              <th>Total</th>
+              <th>Items</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="adminOrdersTableBody"></tbody>
+        </table>
+      </div>
     </section>
 
     <section>
@@ -275,6 +299,41 @@ At Gadget Galore, we don’t just sell gadgets—we bring tomorrow’s technolog
           <p id="detailDescription" class="mb-2"></p>
           <p id="detailSpecs" class="mb-1"></p>
           <h6 id="detailPrice" class="price-tag mt-3"></h6>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Your Cart</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="cartItemsList" class="mb-3"></div>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <strong>Total</strong>
+            <strong id="cartTotal">PHP 0</strong>
+          </div>
+          <form id="checkoutForm" class="row g-2">
+            <div class="col-md-6">
+              <input id="checkoutName" class="form-control" placeholder="Full Name" required />
+            </div>
+            <div class="col-md-6">
+              <input id="checkoutEmail" type="email" class="form-control" placeholder="Email" required />
+            </div>
+            <div class="col-md-6">
+              <input id="checkoutPhone" class="form-control" placeholder="Phone Number" required />
+            </div>
+            <div class="col-md-6">
+              <input id="checkoutLocation" class="form-control" placeholder="Location / Address" required />
+            </div>
+            <div class="col-12">
+              <button id="placeOrderBtn" class="btn btn-gg-primary w-100" type="submit">Place Order</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
