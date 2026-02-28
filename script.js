@@ -58,7 +58,13 @@ let authMode = "signin";
 let currentUser = null;
 let authToken = null;
 let products = [];
-const API_BASE_URL = "http://localhost:5000/api";
+const LOCAL_API_BASE_URL = "http://localhost:5000/api";
+const RENDER_API_BASE_URL = "https://b-acuram.onrender.com/api";
+const API_BASE_URL = (() => {
+  const host = window.location.hostname;
+  const isLocalHost = host === "localhost" || host === "127.0.0.1";
+  return isLocalHost ? LOCAL_API_BASE_URL : RENDER_API_BASE_URL;
+})();
 const AUTH_STORAGE_KEY = "gg_auth_session";
 let featureBannerTimeoutId = null;
 const selectedAdminIds = new Set();
