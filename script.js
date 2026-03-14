@@ -127,6 +127,7 @@ function updateAuthUI() {
   }
   updateAdminUI();
   loadOrders();
+  renderProducts();
 }
 
 function showFeatureBanner(message, type = "info") {
