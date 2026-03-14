@@ -58,111 +58,9 @@
       </div>
     </section>
 
-    <section id="adminPanel" class="control-box p-3 p-md-4 mb-4 d-none">
+    <section id="adminOrdersSection" class="control-box p-3 p-md-4 mb-4 d-none">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="m-0">Admin App Management</h4>
-        <span class="badge text-bg-success">Admin Only</span>
-      </div>
-
-      <div
-        id="adminUndoBanner"
-        class="alert alert-warning d-none py-2 px-3 mb-3 d-flex justify-content-between align-items-center"
-        role="status"
-      >
-        <span id="adminUndoText" class="small mb-0"></span>
-        <button id="adminUndoBtn" class="btn btn-sm btn-outline-dark" type="button">Undo</button>
-      </div>
-
-      <div class="row g-2 mb-3">
-        <div class="col-md-6">
-          <input
-            id="adminSearchInput"
-            class="form-control"
-            placeholder="Search apps by name/category..."
-          />
-        </div>
-        <div class="col-md-4">
-          <select id="adminSortSelect" class="form-select">
-            <option value="newest" selected>Sort: Newest</option>
-            <option value="oldest">Sort: Oldest</option>
-            <option value="priceAsc">Sort: Price Low to High</option>
-            <option value="priceDesc">Sort: Price High to Low</option>
-            <option value="nameAsc">Sort: Name A-Z</option>
-          </select>
-        </div>
-        <div class="col-md-2 d-flex align-items-center">
-          <small class="text-muted"><span id="adminCrudCount">0</span> app(s)</small>
-        </div>
-      </div>
-
-      <form id="adminAppForm" class="row g-2 mb-3">
-        <input id="adminAppId" type="hidden" />
-        <div class="col-md-6">
-          <input id="adminAppName" class="form-control" placeholder="App name" required />
-        </div>
-        <div class="col-md-3">
-          <input id="adminAppCategory" class="form-control" placeholder="Category" required />
-        </div>
-        <div class="col-md-3">
-          <input id="adminAppPrice" type="number" min="0" class="form-control" placeholder="Price" required />
-        </div>
-        <div class="col-md-6">
-          <input id="adminAppSpecs" class="form-control" placeholder="Specs" required />
-        </div>
-        <div class="col-md-6">
-          <input id="adminAppImage" type="file" class="form-control" accept="image/*" />
-          <input id="adminAppImageExisting" type="hidden" />
-          <small class="text-muted">Upload a product image (saved in backend storage).</small>
-        </div>
-        <div class="col-12">
-          <textarea id="adminAppDesc" class="form-control" rows="2" placeholder="Description" required></textarea>
-        </div>
-        <div class="col-12 d-flex gap-2">
-          <button id="adminSaveBtn" class="btn btn-gg-primary" type="submit">Save App</button>
-          <button id="adminCancelEditBtn" class="btn btn-outline-secondary d-none" type="button">Cancel Edit</button>
-        </div>
-      </form>
-
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th style="width: 36px;">
-                <input id="adminSelectAll" class="form-check-input" type="checkbox" />
-              </th>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Updated</th>
-              <th class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="adminAppsTableBody"></tbody>
-        </table>
-      </div>
-
-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
-        <div class="d-flex align-items-center gap-2">
-          <button id="adminBulkDeleteBtn" class="btn btn-sm btn-outline-danger" type="button" disabled>
-            Delete Selected
-          </button>
-          <small class="text-muted"><span id="adminSelectedCount">0</span> selected</small>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <select id="adminPageSizeSelect" class="form-select form-select-sm">
-            <option value="5">5 / page</option>
-            <option value="10" selected>10 / page</option>
-            <option value="20">20 / page</option>
-          </select>
-          <button id="adminPrevPageBtn" class="btn btn-sm btn-outline-secondary" type="button">Prev</button>
-          <small id="adminPageInfo" class="text-muted">Page 1 of 1</small>
-          <button id="adminNextPageBtn" class="btn btn-sm btn-outline-secondary" type="button">Next</button>
-        </div>
-      </div>
-
-      <hr class="my-4" />
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="m-0">Customer Orders</h5>  
+        <h5 class="m-0">Customer Orders</h5>
         <button id="adminRefreshOrdersBtn" class="btn btn-sm btn-outline-secondary" type="button">
           Refresh Orders
         </button>
@@ -186,9 +84,12 @@
     </section>
 
     <section>
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="m-0">Products</h4>
-        <small class="text-muted"><span id="resultCount">0</span> item(s) found</small>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <h4 class="m-0">Products</h4>
+          <small class="text-muted"><span id="resultCount">0</span> item(s) found</small>
+        </div>
+        <button id="addProductBtn" class="btn btn-gg-primary d-none" type="button">Add Product</button>
       </div>
       <div id="productGrid" class="row g-3"></div>
     </section>
@@ -332,6 +233,55 @@ At Gadget Galore, we don’t just sell gadgets—we bring tomorrow’s technolog
             </div>
             <div class="col-12">
               <button id="placeOrderBtn" class="btn btn-gg-primary w-100" type="submit">Place Order</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="productFormModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="productFormModalTitle" class="modal-title">Add Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="adminAppForm">
+            <input id="adminAppId" type="hidden" />
+            <div class="mb-3">
+              <label for="adminAppName" class="form-label">Product name</label>
+              <input id="adminAppName" class="form-control" placeholder="Product name" required />
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label for="adminAppCategory" class="form-label">Category</label>
+                <input id="adminAppCategory" class="form-control" placeholder="Category" required />
+              </div>
+              <div class="col-6">
+                <label for="adminAppPrice" class="form-label">Price</label>
+                <input id="adminAppPrice" type="number" min="0" class="form-control" placeholder="Price" required />
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="adminAppSpecs" class="form-label">Specs</label>
+              <input id="adminAppSpecs" class="form-control" placeholder="Specs" required />
+            </div>
+            <div class="mb-3">
+              <label for="adminAppDesc" class="form-label">Description</label>
+              <textarea id="adminAppDesc" class="form-control" rows="2" placeholder="Description" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="adminAppImage" class="form-label">Image</label>
+              <input id="adminAppImage" type="file" class="form-control" accept="image/*" />
+              <input id="adminAppImageExisting" type="hidden" />
+              <small class="text-muted">Upload a product image (saved in backend storage).</small>
+            </div>
+            <div class="d-flex gap-2">
+              <button id="adminSaveBtn" class="btn btn-gg-primary" type="submit">Save Product</button>
+              <button id="adminCancelEditBtn" class="btn btn-outline-secondary d-none" type="button">Cancel</button>
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
             </div>
           </form>
         </div>

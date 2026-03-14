@@ -22,7 +22,8 @@ const detailImage = document.getElementById("detailImage");
 const detailDescription = document.getElementById("detailDescription");
 const detailSpecs = document.getElementById("detailSpecs");
 const detailPrice = document.getElementById("detailPrice");
-const adminPanel = document.getElementById("adminPanel");
+const adminOrdersSection = document.getElementById("adminOrdersSection");
+const addProductBtn = document.getElementById("addProductBtn");
 const adminAppForm = document.getElementById("adminAppForm");
 const adminAppId = document.getElementById("adminAppId");
 const adminAppName = document.getElementById("adminAppName");
@@ -34,20 +35,7 @@ const adminAppImage = document.getElementById("adminAppImage");
 const adminAppImageExisting = document.getElementById("adminAppImageExisting");
 const adminSaveBtn = document.getElementById("adminSaveBtn");
 const adminCancelEditBtn = document.getElementById("adminCancelEditBtn");
-const adminAppsTableBody = document.getElementById("adminAppsTableBody");
-const adminSearchInput = document.getElementById("adminSearchInput");
-const adminSortSelect = document.getElementById("adminSortSelect");
-const adminCrudCount = document.getElementById("adminCrudCount");
-const adminUndoBanner = document.getElementById("adminUndoBanner");
-const adminUndoText = document.getElementById("adminUndoText");
-const adminUndoBtn = document.getElementById("adminUndoBtn");
-const adminSelectAll = document.getElementById("adminSelectAll");
-const adminBulkDeleteBtn = document.getElementById("adminBulkDeleteBtn");
-const adminSelectedCount = document.getElementById("adminSelectedCount");
-const adminPageSizeSelect = document.getElementById("adminPageSizeSelect");
-const adminPrevPageBtn = document.getElementById("adminPrevPageBtn");
-const adminNextPageBtn = document.getElementById("adminNextPageBtn");
-const adminPageInfo = document.getElementById("adminPageInfo");
+const productFormModalTitle = document.getElementById("productFormModalTitle");
 const adminOrdersTableBody = document.getElementById("adminOrdersTableBody");
 const adminRefreshOrdersBtn = document.getElementById("adminRefreshOrdersBtn");
 const authFeatureBanner = document.getElementById("authFeatureBanner");
@@ -64,6 +52,7 @@ const placeOrderBtn = document.getElementById("placeOrderBtn");
 const authModal = new bootstrap.Modal(document.getElementById("authModal"));
 const detailModal = new bootstrap.Modal(document.getElementById("productDetailModal"));
 const cartModal = new bootstrap.Modal(document.getElementById("cartModal"));
+const productFormModal = new bootstrap.Modal(document.getElementById("productFormModal"));
 
 let cartItems = [];
 let authMode = "signin";
@@ -80,10 +69,6 @@ const API_BASE_URL = (() => {
 })();
 const AUTH_STORAGE_KEY = "gg_auth_session";
 let featureBannerTimeoutId = null;
-const selectedAdminIds = new Set();
-let adminCurrentPage = 1;
-let adminPageSize = Number(adminPageSizeSelect.value);
-let pendingDeleteBatch = null;
 
 function formatPeso(value) {
   return new Intl.NumberFormat("en-PH", {
@@ -113,89 +98,6 @@ function formatDate(value) {
   });
 }
 
-function getAdminFilteredSortedProducts() {
-  const searchValue = adminSearchInput.value.trim().toLowerCase();
-  const sortValue = adminSortSelect.value;
-
-  return products
-    .filter((product) => {
-      if (!searchValue) return true;
-      return (
-        product.name.toLowerCase().includes(searchValue) ||
-        product.category.toLowerCase().includes(searchValue)
-      );
-    })
-    .sort((a, b) => {
-      if (sortValue === "oldest") {
-        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-      }
-      if (sortValue === "priceAsc") {
-        return Number(a.price || 0) - Number(b.price || 0);
-      }
-      if (sortValue === "priceDesc") {
-        return Number(b.price || 0) - Number(a.price || 0);
-      }
-      if (sortValue === "nameAsc") {
-        return a.name.localeCompare(b.name);
-      }
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-    });
-}
-
-function hideUndoBanner() {
-  adminUndoBanner.classList.add("d-none");
-  adminUndoText.textContent = "";
-}
-
-async function commitPendingDeleteBatch() {
-  if (!pendingDeleteBatch) return;
-  const batch = pendingDeleteBatch;
-  pendingDeleteBatch = null;
-  hideUndoBanner();
-
-  const results = await Promise.allSettled(batch.items.map((item) => deleteApp(item._id)));
-  const failedDeletes = results.filter((result) => result.status === "rejected").length;
-  await loadProducts();
-
-  if (failedDeletes) {
-    showFeatureBanner(
-      `${batch.items.length - failedDeletes} deleted, ${failedDeletes} failed. Please retry.`,
-      "danger"
-    );
-  } else {
-    showFeatureBanner(`${batch.items.length} app(s) deleted successfully.`, "success");
-  }
-}
-
-async function queueDeleteItems(items) {
-  if (!items.length) return;
-
-  if (pendingDeleteBatch) {
-    clearTimeout(pendingDeleteBatch.timerId);
-    await commitPendingDeleteBatch();
-  }
-
-  pendingDeleteBatch = {
-    items,
-    timerId: setTimeout(() => {
-      commitPendingDeleteBatch().catch(() => {
-        showFeatureBanner("Delete operation failed.", "danger");
-      });
-    }, 5000)
-  };
-
-  const idsToDelete = new Set(items.map((item) => item._id));
-  products = products.filter((product) => !idsToDelete.has(product._id));
-  idsToDelete.forEach((id) => selectedAdminIds.delete(id));
-
-  adminUndoText.textContent = `${items.length} app(s) will be deleted in 5 seconds.`;
-  adminUndoBanner.classList.remove("d-none");
-
-  initCategories();
-  renderProducts();
-  renderAdminApps();
-}
-
 function initCategories() {
   categoryFilter.innerHTML = "";
   const categories = ["All", ...new Set(products.map((p) => p.category))];
@@ -214,10 +116,12 @@ function updateAuthUI() {
     logoutBtn.classList.remove("d-none");
     checkoutName.value = currentUser.name || "";
     checkoutEmail.value = currentUser.email || "";
+    openCartBtn.classList.toggle("d-none", currentUser.role === "admin");
   } else {
     authStatus.textContent = "Guest";
     openAuthBtn.textContent = "Sign In / Sign Up";
     logoutBtn.classList.add("d-none");
+    openCartBtn.classList.remove("d-none");
     checkoutName.value = "";
     checkoutEmail.value = "";
   }
@@ -473,116 +377,43 @@ async function updateOrderStatus(orderId, status) {
 
 function updateAdminUI() {
   const isAdmin = currentUser && currentUser.role === "admin";
-  adminPanel.classList.toggle("d-none", !isAdmin);
+  if (adminOrdersSection) adminOrdersSection.classList.toggle("d-none", !isAdmin);
+  if (addProductBtn) addProductBtn.classList.toggle("d-none", !isAdmin);
   if (isAdmin) {
-    renderAdminApps();
     renderAdminOrders();
   }
 }
 
-function renderAdminApps() {
-  adminAppsTableBody.innerHTML = "";
-  const filteredProducts = getAdminFilteredSortedProducts();
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / adminPageSize));
-  adminCurrentPage = Math.min(Math.max(1, adminCurrentPage), totalPages);
-  const startIndex = (adminCurrentPage - 1) * adminPageSize;
-  const currentPageItems = filteredProducts.slice(startIndex, startIndex + adminPageSize);
-
-  adminCrudCount.textContent = filteredProducts.length;
-  adminSelectedCount.textContent = selectedAdminIds.size;
-  adminBulkDeleteBtn.disabled = selectedAdminIds.size === 0;
-  adminPageInfo.textContent = `Page ${adminCurrentPage} of ${totalPages}`;
-  adminPrevPageBtn.disabled = adminCurrentPage <= 1;
-  adminNextPageBtn.disabled = adminCurrentPage >= totalPages;
-
-  if (!currentPageItems.length) {
-    adminSelectAll.checked = false;
-    adminSelectAll.indeterminate = false;
-    adminAppsTableBody.innerHTML = `
-      <tr>
-        <td colspan="6" class="text-center text-muted">No matching apps. Try a different search or add a new one.</td>
-      </tr>
-    `;
-    return;
+function openProductFormModal(mode, product = null) {
+  resetAdminForm();
+  if (mode === "edit" && product) {
+    adminAppId.value = product._id;
+    adminAppName.value = product.name;
+    adminAppCategory.value = product.category;
+    adminAppPrice.value = product.price;
+    adminAppDesc.value = product.desc || "";
+    adminAppSpecs.value = product.specs || "";
+    adminAppImageExisting.value = product.image || "";
+    adminAppImage.value = "";
+    adminSaveBtn.textContent = "Update Product";
+    adminCancelEditBtn.classList.remove("d-none");
+    productFormModalTitle.textContent = "Edit Product";
+  } else if (mode === "duplicate" && product) {
+    adminAppId.value = "";
+    adminAppName.value = `${product.name} Copy`;
+    adminAppCategory.value = product.category;
+    adminAppPrice.value = product.price;
+    adminAppDesc.value = product.desc || "";
+    adminAppSpecs.value = product.specs || "";
+    adminAppImageExisting.value = "";
+    adminAppImage.value = "";
+    adminSaveBtn.textContent = "Save Product";
+    productFormModalTitle.textContent = "Duplicate Product";
+  } else {
+    productFormModalTitle.textContent = "Add Product";
+    adminSaveBtn.textContent = "Save Product";
   }
-
-  const selectedOnPageCount = currentPageItems.filter((item) => selectedAdminIds.has(item._id)).length;
-  adminSelectAll.checked = selectedOnPageCount === currentPageItems.length;
-  adminSelectAll.indeterminate =
-    selectedOnPageCount > 0 && selectedOnPageCount < currentPageItems.length;
-
-  currentPageItems.forEach((product) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>
-        <input class="form-check-input admin-row-check" type="checkbox" data-id="${product._id}" ${
-          selectedAdminIds.has(product._id) ? "checked" : ""
-        } />
-      </td>
-      <td>${product.name}</td>
-      <td>${product.category}</td>
-      <td>${formatPeso(product.price)}</td>
-      <td>${formatDate(product.updatedAt)}</td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-outline-primary me-1 duplicate-app-btn">Duplicate</button>
-        <button class="btn btn-sm btn-outline-secondary me-1 edit-app-btn">Edit</button>
-        <button class="btn btn-sm btn-outline-danger delete-app-btn">Delete</button>
-      </td>
-    `;
-
-    row.querySelector(".edit-app-btn").addEventListener("click", () => {
-      adminAppId.value = product._id;
-      adminAppName.value = product.name;
-      adminAppCategory.value = product.category;
-      adminAppPrice.value = product.price;
-      adminAppDesc.value = product.desc;
-      adminAppSpecs.value = product.specs;
-      adminAppImageExisting.value = product.image;
-      adminAppImage.value = "";
-      adminSaveBtn.textContent = "Update App";
-      adminCancelEditBtn.classList.remove("d-none");
-      adminPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-
-    row.querySelector(".duplicate-app-btn").addEventListener("click", () => {
-      adminAppId.value = "";
-      adminAppName.value = `${product.name} Copy`;
-      adminAppCategory.value = product.category;
-      adminAppPrice.value = product.price;
-      adminAppDesc.value = product.desc;
-      adminAppSpecs.value = product.specs;
-      adminAppImageExisting.value = "";
-      adminAppImage.value = "";
-      adminSaveBtn.textContent = "Save App";
-      adminCancelEditBtn.classList.add("d-none");
-      showFeatureBanner("Duplicated to form. Upload a new image and save.", "info");
-      adminPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-
-    row.querySelector(".delete-app-btn").addEventListener("click", async () => {
-      if (!confirm(`Delete "${product.name}"?`)) return;
-      try {
-        await queueDeleteItems([product]);
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
-    adminAppsTableBody.appendChild(row);
-  });
-
-  adminAppsTableBody.querySelectorAll(".admin-row-check").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
-      const appId = checkbox.dataset.id;
-      if (checkbox.checked) {
-        selectedAdminIds.add(appId);
-      } else {
-        selectedAdminIds.delete(appId);
-      }
-      adminSelectedCount.textContent = selectedAdminIds.size;
-      adminBulkDeleteBtn.disabled = selectedAdminIds.size === 0;
-    });
-  });
+  productFormModal.show();
 }
 
 function renderAdminOrders() {
@@ -661,24 +492,20 @@ function resetAdminForm() {
   adminAppForm.reset();
   adminAppId.value = "";
   adminAppImageExisting.value = "";
-  adminSaveBtn.textContent = "Save App";
+  adminSaveBtn.textContent = "Save Product";
   adminCancelEditBtn.classList.add("d-none");
 }
 
 async function loadProducts() {
   try {
     products = sanitizeProducts(await fetchApps());
-    const validIds = new Set(products.map((item) => item._id));
-    [...selectedAdminIds].forEach((id) => {
-      if (!validIds.has(id)) selectedAdminIds.delete(id);
-    });
   } catch (error) {
     products = [];
     alert(error.message || "Could not load apps from backend.");
   }
   initCategories();
   renderProducts();
-  renderAdminApps();
+  if (currentUser && currentUser.role === "admin") renderAdminOrders();
 }
 
 function addToCart(product) {
@@ -742,9 +569,22 @@ function renderProducts() {
     return;
   }
 
+  const isAdmin = currentUser && currentUser.role === "admin";
+
   filtered.forEach((product) => {
     const col = document.createElement("div");
     col.className = "col-12 col-sm-6 col-lg-4 col-xl-3";
+    const actionButtons = isAdmin
+      ? `
+        <button class="btn btn-outline-secondary details-btn">View Details</button>
+        <button class="btn btn-sm btn-outline-primary edit-product-btn">Edit</button>
+        <button class="btn btn-sm btn-outline-warning duplicate-product-btn">Duplicate</button>
+        <button class="btn btn-sm btn-outline-danger delete-product-btn">Delete</button>
+      `
+      : `
+        <button class="btn btn-outline-secondary details-btn">View Details</button>
+        <button class="btn btn-gg-primary add-btn">Add to Cart</button>
+      `;
     col.innerHTML = `
       <article class="product-card p-3 d-flex flex-column">
         <img src="${toImageUrl(product.image)}" alt="${product.name}" class="product-image mb-3" />
@@ -755,14 +595,28 @@ function renderProducts() {
         <h6 class="fw-bold mb-2">${product.name}</h6>
         <p class="text-muted small mb-3">${product.desc}</p>
         <div class="mt-auto d-grid gap-2">
-          <button class="btn btn-outline-secondary details-btn">View Details</button>
-          <button class="btn btn-gg-primary add-btn">Add to Cart</button>
+          ${actionButtons}
         </div>
       </article>
     `;
 
-    col.querySelector(".add-btn").addEventListener("click", () => addToCart(product));
     col.querySelector(".details-btn").addEventListener("click", () => openProductDetails(product));
+    if (isAdmin) {
+      col.querySelector(".edit-product-btn").addEventListener("click", () => openProductFormModal("edit", product));
+      col.querySelector(".duplicate-product-btn").addEventListener("click", () => openProductFormModal("duplicate", product));
+      col.querySelector(".delete-product-btn").addEventListener("click", async () => {
+        if (!confirm(`Delete "${product.name}"?`)) return;
+        try {
+          await deleteApp(product._id);
+          showFeatureBanner("Product deleted.", "success");
+          await loadProducts();
+        } catch (error) {
+          showFeatureBanner(error.message || "Delete failed.", "danger");
+        }
+      });
+    } else {
+      col.querySelector(".add-btn").addEventListener("click", () => addToCart(product));
+    }
     productGrid.appendChild(col);
   });
 }
@@ -860,73 +714,33 @@ adminAppForm.addEventListener("submit", async (e) => {
     adminSaveBtn.textContent = adminAppId.value ? "Updating..." : "Saving...";
     if (adminAppId.value) {
       await updateApp(adminAppId.value, payload);
-      showFeatureBanner("App updated successfully.", "success");
+      showFeatureBanner("Product updated successfully.", "success");
     } else {
       await createApp(payload);
-      showFeatureBanner("App created successfully.", "success");
+      showFeatureBanner("Product created successfully.", "success");
     }
-    resetAdminForm();
+    adminAppForm.reset();
+    adminAppId.value = "";
+    adminAppImageExisting.value = "";
+    adminSaveBtn.textContent = "Save Product";
+    adminCancelEditBtn.classList.add("d-none");
+    productFormModal.hide();
     await loadProducts();
   } catch (error) {
     alert(error.message);
   } finally {
     adminSaveBtn.disabled = false;
-    adminSaveBtn.textContent = "Save App";
+    adminSaveBtn.textContent = adminAppId.value ? "Update Product" : "Save Product";
   }
 });
 
-adminCancelEditBtn.addEventListener("click", resetAdminForm);
-adminSearchInput.addEventListener("input", () => {
-  adminCurrentPage = 1;
-  renderAdminApps();
+adminCancelEditBtn.addEventListener("click", () => {
+  resetAdminForm();
+  productFormModal.hide();
 });
-adminSortSelect.addEventListener("change", () => {
-  adminCurrentPage = 1;
-  renderAdminApps();
-});
-adminPageSizeSelect.addEventListener("change", () => {
-  adminPageSize = Number(adminPageSizeSelect.value) || 10;
-  adminCurrentPage = 1;
-  renderAdminApps();
-});
-adminPrevPageBtn.addEventListener("click", () => {
-  adminCurrentPage = Math.max(1, adminCurrentPage - 1);
-  renderAdminApps();
-});
-adminNextPageBtn.addEventListener("click", () => {
-  adminCurrentPage += 1;
-  renderAdminApps();
-});
-adminSelectAll.addEventListener("change", () => {
-  const filteredProducts = getAdminFilteredSortedProducts();
-  const startIndex = (adminCurrentPage - 1) * adminPageSize;
-  const currentPageItems = filteredProducts.slice(startIndex, startIndex + adminPageSize);
 
-  currentPageItems.forEach((item) => {
-    if (adminSelectAll.checked) {
-      selectedAdminIds.add(item._id);
-    } else {
-      selectedAdminIds.delete(item._id);
-    }
-  });
-  renderAdminApps();
-});
-adminBulkDeleteBtn.addEventListener("click", async () => {
-  const selectedItems = products.filter((item) => selectedAdminIds.has(item._id));
-  if (!selectedItems.length) return;
-  if (!confirm(`Delete ${selectedItems.length} selected app(s)?`)) return;
-  await queueDeleteItems(selectedItems);
-});
-adminUndoBtn.addEventListener("click", () => {
-  if (!pendingDeleteBatch) return;
-  clearTimeout(pendingDeleteBatch.timerId);
-  products = [...pendingDeleteBatch.items, ...products];
-  pendingDeleteBatch = null;
-  hideUndoBanner();
-  initCategories();
-  renderProducts();
-  renderAdminApps();
-  showFeatureBanner("Delete undone. Apps restored.", "success");
+addProductBtn.addEventListener("click", () => {
+  openProductFormModal("add");
 });
 
 checkoutForm.addEventListener("submit", async (e) => {
