@@ -8,6 +8,7 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     rel="stylesheet"
   />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -26,7 +27,10 @@
         <span id="authStatus" class="badge text-bg-light text-dark">Guest</span>
         <button id="openAuthBtn" class="btn btn-sm btn-outline-light">Sign In / Sign Up</button>
         <button id="logoutBtn" class="btn btn-sm btn-outline-warning d-none">Logout</button>
-        <button id="openCartBtn" class="btn btn-sm cart-pill">Cart: <span id="cartCount">0</span></button>
+        <button id="openCartBtn" class="btn btn-sm cart-pill cart-icon-btn position-relative" type="button" title="Cart" aria-label="Open cart">
+          <i class="bi bi-cart3 fs-5"></i>
+          <span id="cartCount" class="cart-count-badge">0</span>
+        </button>
       </div>
     </div>
   </header>
@@ -206,17 +210,17 @@ At Gadget Galore, we don’t just sell gadgets—we bring tomorrow’s technolog
   </div>
 
   <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Your Cart</h5>
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content cart-modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title fw-bold">Your Cart</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <div id="cartItemsList" class="mb-3"></div>
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <strong>Total</strong>
-            <strong id="cartTotal">PHP 0</strong>
+        <div class="modal-body pt-0">
+          <div id="cartItemsList" class="cart-items-list mb-4"></div>
+          <div class="cart-total-row d-flex justify-content-between align-items-center py-3 mb-3">
+            <span class="fw-bold fs-5">Total</span>
+            <strong id="cartTotal" class="fs-5 text-success">₱0</strong>
           </div>
           <form id="checkoutForm" class="row g-2">
             <div class="col-md-6">

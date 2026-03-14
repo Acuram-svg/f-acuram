@@ -208,8 +208,9 @@ function getCartTotalAmount() {
 function renderCartModal() {
   if (!cartItems.length) {
     cartItemsList.innerHTML = `
-      <div class="alert alert-warning mb-0">
-        Your cart is empty. Add modern tech products first.
+      <div class="cart-empty-state text-center py-5">
+        <i class="bi bi-cart-x display-4 text-muted"></i>
+        <p class="mt-2 mb-0 text-muted">Your cart is empty. Add products from the shop.</p>
       </div>
     `;
     cartTotal.textContent = formatPeso(0);
@@ -221,20 +222,33 @@ function renderCartModal() {
   cartItemsList.innerHTML = "";
 
   cartItems.forEach((item) => {
+    const imgUrl = toImageUrl(item.image);
+    const rawDesc = item.desc || "";
+    const descEscaped = rawDesc.slice(0, 80).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const descSuffix = rawDesc.length > 80 ? "…" : "";
+    const nameEscaped = (item.name || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const row = document.createElement("div");
-    row.className = "d-flex justify-content-between align-items-center border rounded p-2 mb-2";
+    row.className = "cart-item-card";
     row.innerHTML = `
-      <div class="pe-2">
-        <div class="fw-semibold">${item.name}</div>
-        <small class="text-muted">${formatPeso(item.price)} each</small>
+      <div class="cart-item-image-wrap">
+        <img src="${imgUrl}" alt="${nameEscaped}" class="cart-item-image" />
       </div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-outline-secondary cart-minus-btn">-</button>
-        <span class="fw-semibold">${item.quantity}</span>
-        <button class="btn btn-sm btn-outline-secondary cart-plus-btn">+</button>
-        <button class="btn btn-sm btn-outline-danger cart-remove-btn">Remove</button>
+      <div class="cart-item-body">
+        <div class="cart-item-name">${nameEscaped}</div>
+        ${descEscaped ? `<p class="cart-item-desc text-muted small mb-2">${descEscaped}${descSuffix}</p>` : ""}
+        <div class="cart-item-price">${formatPeso(item.price)} each</div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="d-flex align-items-center border rounded">
+            <button class="btn btn-sm btn-outline-secondary cart-minus-btn rounded-0" type="button">−</button>
+            <span class="cart-item-qty px-2">${item.quantity}</span>
+            <button class="btn btn-sm btn-outline-secondary cart-plus-btn rounded-0" type="button">+</button>
+          </div>
+          <button class="btn btn-sm btn-outline-danger cart-remove-btn" type="button">Remove</button>
+        </div>
       </div>
     `;
+    const imgEl = row.querySelector(".cart-item-image");
+    if (imgEl) imgEl.onerror = function () { this.style.background = "#e8e8e8"; this.src = ""; this.alt = ""; };
 
     row.querySelector(".cart-minus-btn").addEventListener("click", () => {
       item.quantity -= 1;
@@ -514,6 +528,9 @@ function addToCart(product) {
     showAuthModal("signin");
     return;
   }
+  if (currentUser.role === "admin") {
+    return;
+  }
 
   const existingItem = cartItems.find((item) => item.productId === product._id);
   if (existingItem) {
@@ -524,6 +541,7 @@ function addToCart(product) {
       name: product.name,
       price: product.price,
       image: product.image,
+      desc: product.desc || "",
       quantity: 1
     });
   }
